@@ -6,10 +6,10 @@ import common.Task;
 
 import java.time.Instant;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /*
 Имеются
@@ -20,11 +20,26 @@ import java.util.Set;
  */
 public class Task6 implements Task {
 
-  private Set<String> getPersonDescriptions(Collection<Person> persons,
-                                            Map<Integer, Set<Integer>> personAreaIds,
-                                            Collection<Area> areas) {
-    return new HashSet<>();
-  }
+    private Set<String> getPersonDescriptions(Collection<Person> persons,
+                                              Map<Integer, Set<Integer>> personAreaIds,
+                                              Collection<Area> areas) {
+        Map<Integer, String> personIdFirstNameMap = persons.stream().collect(Collectors.toMap(Person::getId, Person::getFirstName));
+        Map<Integer, String> areaIdNameMap = areas.stream().collect(Collectors.toMap(Area::getId, Area::getName));
+
+        return personAreaIds.entrySet()
+                .stream()
+                .map(entry -> combine(personIdFirstNameMap.get(entry.getKey()), areaIdNameMap, entry.getValue()))
+                .flatMap(Collection::stream)
+                .collect(Collectors.toSet());
+    }
+
+    private List<String> combine(String personFirstName,
+                                 Map<Integer, String> areaIdNameMap,
+                                 Set<Integer> areasIds) {
+        return areasIds.stream()
+                .map(areaId -> String.format("%s - %s", personFirstName, areaIdNameMap.get(areaId)))
+                .collect(Collectors.toList());
+    }
 
   @Override
   public boolean check() {
