@@ -3,13 +3,11 @@ package tasks;
 import common.Person;
 import common.Task;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /*
@@ -23,75 +21,86 @@ P.P.S Здесь ваши правки желательно прокоммент
  */
 public class Task8 implements Task {
 
-  private long count;
 
-  //Не хотим выдывать апи нашу фальшивую персону, поэтому конвертим начиная со второй
-  public List<String> getNames(List<Person> persons) {
-    if (persons.size() == 0) {
-      return Collections.emptyList();
-    }
-    persons.remove(0);
-    return persons.stream().map(Person::getFirstName).collect(Collectors.toList());
-  }
-
-  //ну и различные имена тоже хочется
-  public Set<String> getDifferentNames(List<Person> persons) {
-    return getNames(persons).stream().distinct().collect(Collectors.toSet());
-  }
-
-  //Для фронтов выдадим полное имя, а то сами не могут
-  public String convertPersonToString(Person person) {
-    String result = "";
-    if (person.getSecondName() != null) {
-      result += person.getSecondName();
-    }
-
-    if (person.getFirstName() != null) {
-      result += " " + person.getFirstName();
-    }
-
-    if (person.getSecondName() != null) {
-      result += " " + person.getSecondName();
-    }
-    return result;
-  }
-
-  // словарь id персоны -> ее имя
-  public Map<Integer, String> getPersonNames(Collection<Person> persons) {
-    Map<Integer, String> map = new HashMap<>(1);
-    for (Person person : persons) {
-      if (!map.containsKey(person.getId())) {
-        map.put(person.getId(), convertPersonToString(person));
-      }
-    }
-    return map;
-  }
-
-  // есть ли совпадающие в двух коллекциях персоны?
-  public boolean hasSamePersons(Collection<Person> persons1, Collection<Person> persons2) {
-    boolean has = false;
-    for (Person person1 : persons1) {
-      for (Person person2 : persons2) {
-        if (person1.equals(person2)) {
-          has = true;
+    //Не хотим выдывать апи нашу фальшивую персону, поэтому конвертим начиная со второй
+    public List<String> getNames(List<Person> persons) {
+        if (persons.size() == 0) {
+            return Collections.emptyList();
         }
-      }
+        return persons.stream().skip(1L).map(Person::getFirstName).collect(Collectors.toList());
     }
-    return has;
-  }
 
-  //...
-  public long countEven(Stream<Integer> numbers) {
-    count = 0;
-    numbers.filter(num -> num % 2 == 0).forEach(num -> count++);
-    return count;
-  }
+    //ну и различные имена тоже хочется
+    public Set<String> getDifferentNames(List<Person> persons) {
+        return new HashSet<>(getNames(persons));
+    }
 
-  @Override
-  public boolean check() {
-    System.out.println("Слабо дойти до сюда и исправить Fail этой таски?");
-    boolean codeSmellsGood = false;
-    boolean reviewerDrunk = false;
-    return codeSmellsGood || reviewerDrunk;
-  }
+    //Для фронтов выдадим полное имя, а то сами не могут
+    public String getPersonFullName(Person person) {
+        return Stream.of(person.getSecondName(), person.getFirstName(), person.getMiddleName())
+                .filter(this::isNotBlank)
+                .collect(Collectors.joining(" "));
+    }
+
+    private boolean isNotBlank(String v) {
+        return !(v == null || v.isEmpty());
+    }
+
+    // словарь id персоны -> ее имя
+    // не добавляем новые персоны с дублирующим id, остается первый
+    public Map<Integer, String> getPersonNamesMap(Collection<Person> persons) {
+        return persons.stream()
+                .collect(Collectors.toMap(Person::getId, this::getPersonFullName, (a, b) -> a));
+    }
+
+    // есть ли совпадающие в двух коллекциях персоны?
+    public boolean hasSamePersons(Collection<Person> persons1, Collection<Person> persons2) {
+        Set<Person> personSet = new HashSet<>(persons2);
+        return persons1.stream().anyMatch(personSet::contains);
+    }
+
+    //подсчет четных значений, вообще не понятно зачем этот метод тут :)
+    //я бы удалил
+    public long countEven(Stream<Integer> numbers) {
+        return numbers
+                .filter(num -> num % 2 == 0)
+                .count();
+    }
+
+    @Override
+    public boolean check() {
+        Instant now = Instant.now();
+        List<Person> persons1 = List.of(new Person(1, "Андрей", "Иванов", "Петрович", now));
+        List<Person> persons2 = List.of(new Person(1, "Андрей", "Иванов", "Петрович", now));
+        List<Person> persons3 = List.of(new Person(2, "Андрей", "Иванов", "Петрович", now.minus(Duration.ofDays(100))));
+        boolean isSamePersons = hasSamePersons(persons1, persons2) && !hasSamePersons(persons1, persons3);
+
+        List<Person> personList = Stream.of(List.of(new Person(0, "Алеша", "Попович", null, Instant.now()))//фейковая персона
+                , persons1, persons2, persons3).flatMap(Collection::stream).collect(Collectors.toList());
+        Set<String> resultName = getDifferentNames(personList);
+        Set<String> expectedName = Set.of("Андрей");
+        boolean isDifferentNames = expectedName.equals(resultName);
+
+        List<Person> persons4 = List.of(
+                new Person(1, "Андрей", "Александров", "Петрович", Instant.now()),
+                new Person(2, "Виктор", "Алексеев", "Федорович", Instant.now()),
+                new Person(2, "Семен", null, "Семеныч", Instant.now()), //дубль с id, должен быть пропущен
+                new Person(3, "Иван", "", "Викторович", Instant.now())
+        );
+
+        Map<Integer, String> result = getPersonNamesMap(persons4);
+        Map<Integer, String> expected = Map.of(
+                1, "Александров Андрей Петрович",
+                2, "Алексеев Виктор Федорович",
+                3, "Иван Викторович");
+
+        boolean isCorrectGroupingPersonName = expected.equals(result);
+
+        Stream<Integer> integerStream = IntStream.rangeClosed(1, 100).boxed();
+        long resultCountEven = countEven(integerStream);
+        long expectedCountEven = 50;
+        boolean isCountingEvenNumber = expectedCountEven == resultCountEven;
+
+        return isSamePersons && isDifferentNames && isCorrectGroupingPersonName && isCountingEvenNumber;
+    }
 }
