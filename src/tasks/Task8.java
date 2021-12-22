@@ -21,14 +21,13 @@ P.P.S Здесь ваши правки желательно прокоммент
  */
 public class Task8 implements Task {
 
-    private long count;
 
     //Не хотим выдывать апи нашу фальшивую персону, поэтому конвертим начиная со второй
     public List<String> getNames(List<Person> persons) {
-        return persons.stream()
-                .skip(1L)
-                .map(this::getPersonFullName)
-                .collect(Collectors.toList());
+        if (persons.size() == 0) {
+            return Collections.emptyList();
+        }
+        return persons.stream().skip(1L).map(Person::getFirstName).collect(Collectors.toList());
     }
 
     //ну и различные имена тоже хочется
@@ -51,7 +50,7 @@ public class Task8 implements Task {
     // не добавляем новые персоны с дублирующим id, остается первый
     public Map<Integer, String> getPersonNamesMap(Collection<Person> persons) {
         return persons.stream()
-                .collect(Collectors.toMap(Person::getId, this::getPersonFullName, (k1, k2) -> k1));
+                .collect(Collectors.toMap(Person::getId, this::getPersonFullName, (a, b) -> a));
     }
 
     // есть ли совпадающие в двух коллекциях персоны?
@@ -79,7 +78,7 @@ public class Task8 implements Task {
         List<Person> personList = Stream.of(List.of(new Person(0, "Алеша", "Попович", null, Instant.now()))//фейковая персона
                 , persons1, persons2, persons3).flatMap(Collection::stream).collect(Collectors.toList());
         Set<String> resultName = getDifferentNames(personList);
-        Set<String> expectedName = Set.of("Иванов Андрей Петрович");
+        Set<String> expectedName = Set.of("Андрей");
         boolean isDifferentNames = expectedName.equals(resultName);
 
         List<Person> persons4 = List.of(
